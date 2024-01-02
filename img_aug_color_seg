@@ -1,23 +1,66 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Sun Dec 31 17:33:47 2023
+
+@author: ask4118
+"""
+
+import imgaug.augmenters as iaa
+import cv2
+import numpy as np
+from skimage import io
+
 import os
 import cv2
 from imgaug import augmenters as iaa
 from imgaug.augmentables.segmaps import SegmentationMapsOnImage
+import numpy as np
 import matplotlib.pyplot as plt
 
-# Set the paths
-input_folder = "path_in_shared"
-output_image_dir = "path_out_images"
-output_mask_dir = "path_out_masks"
+# Set the path to the folder containing your original images and masks
+input_folder = '/Users/ask4118/Documents/Python/data_augmentation/data/original_data_1d'
 
+# Set the path to the directory where you want to save augmented images
+output_image_dir = "/Users/ask4118/Documents/Python/data_augmentation/data/augmented_data_1d/images/"
 os.makedirs(output_image_dir, exist_ok=True)
+
+# Set the path to the directory where you want to save augmented masks
+output_mask_dir = "/Users/ask4118/Documents/Python/data_augmentation/data/augmented_data_1d/masks/"
 os.makedirs(output_mask_dir, exist_ok=True)
+
+
+import numpy as np
+import imgaug as ia
+import imgaug.augmenters as iaa
+from skimage import io
+import matplotlib.pyplot as plt
+
+def load_image_and_mask(image_path, mask_path):
+    # Load an image and its corresponding mask
+    image = io.imread(image_path)
+    mask = io.imread(mask_path)
+    return image, mask
+
+def augment_image_and_mask(image, mask, augmenters):
+    # Augment both image and mask using the same sequence of augmentations
+    seq = iaa.Sequential(augmenters)
+    image_aug, mask_aug = seq(image=image, segmentation_maps=ia.SegmentationMapsOnImage(mask, shape=image.shape))
+    return image_aug, mask_aug.get_arr()
+
+def augment_image_only(image, augmenters):
+    # Augment both image and mask using the same sequence of augmentations
+    seq = iaa.Sequential(augmenters)
+    image_aug = seq(image=image)
+    return image_aug
+
 
 # Augmenters for both image and mask
 common_augmenter = iaa.Sequential([
     iaa.Fliplr(0.4),        # 40% chance of horizontal flip
     iaa.Flipud(0.4),        # 40% chance of vertical flip
     iaa.Affine(rotate=(-10, 10)),  # Rotate images by -10 to 10 degrees
-    iaa.Dropout(p=(0, 0.2))  # Randomly drop 0% to 20% of the pixels
+    iaa.CoarseDropout(p=(0, 0.10))  # Randomly drop 0% to 10% of the pixels
 ])
 
 # Augmenters for the image only
@@ -27,38 +70,49 @@ image_only_augmenter = iaa.Sequential([
     iaa.LinearContrast((0.75, 1.5)),  # Improve or decrease contrast
 ])
 
+# Load your image and mask
+
+
 # List all image files in the input folder
 image_files = [filename for filename in os.listdir(os.path.join(input_folder, 'images')) if filename.endswith(".jpeg")]
 
-# Process each image file
+# Iterate through each image file
 for image_file in image_files:
-    # Load the original image and mask
-    image_path = os.path.join(input_folder, 'images', image_file)
-    mask_path = os.path.join(input_folder, 'masks', image_file.replace(".jpeg", "_combined_mask.png"))
-
-    image = cv2.imread(image_path)
-    mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
-
-    # Ensure the image and mask have the same dimensions
-    assert image.shape[:2] == mask.shape[:2], "Image and mask dimensions do not match"
-
-    # Create SegmentationMapOnImage object for the mask
-    segmap = SegmentationMapsOnImage(mask, shape=image.shape[:2])
-
-    # Apply common augmentations to both image and mask
-    augmented = common_augmenter(image=image, segmentation_maps=segmap)
-    augmented_image = augmented['image']
-    augmented_segmap = augmented['segmentation_maps'].arr
-
-    # Apply image-only augmentations
-    augmented_image = image_only_augmenter(image=augmented_image)
-
-    # Save augmented image and mask
-    output_image_path = os.path.join(output_image_dir, f"aug_{image_file}")
-    output_mask_filename = image_file.replace(".jpeg", "_mask_aug.png")
-    output_mask_path = os.path.join(output_mask_dir, output_mask_filename)
-
-    cv2.imwrite(output_image_path, augmented_image)
-    cv2.imwrite(output_mask_path, augmented_segmap)
+    for i in range(5):
+        # Load the original image and corresponding mask
+        image_path = os.path.join(input_folder, 'images', image_file)
+        mask_path = os.path.join(input_folder, 'masks', image_file.replace(".jpeg", "_combined_mask.png"))
+    
+    
+        image, mask = load_image_and_mask(image_path, mask_path)
+        
+        # Ensure the image and mask have the same dimensions
+        assert image.shape[:2] == mask.shape[:2], "Image and mask dimensions do not match"
+    
+    
+        # Augment the image and mask
+        image_aug, mask_aug = augment_image_and_mask(image, mask, common_augmenter)
+        
+        # Augment the image and mask
+        image_aug = augment_image_only(image_aug, image_only_augmenter)
+        
+    
+        # Create the path for the augmented image
+        output_image_path = os.path.join(output_image_dir, f"aug_{str(i)}_{image_file}")
+        #print(output_image_path)
+    
+        # Create the path for the augmented mask
+        #output_mask_filename = image_file.replace(".png", "_mask_aug.png")
+        output_mask_path = os.path.join(output_mask_dir, f"mask_aug_{str(i)}_{image_file}")
+        #print(output_mask_path)
+    
+        # Save augmented image and mask
+        image_rgb = cv2.cvtColor(image_aug, cv2.COLOR_BGR2RGB)
+        cv2.imwrite(output_image_path, image_rgb)
+        
+        # Convert boolean image to uint8
+        mask_aug = (mask_aug * 255).astype(np.uint8)
+        cv2.imwrite(output_mask_path, mask_aug)
 
 print("Data augmentation complete.")
+
