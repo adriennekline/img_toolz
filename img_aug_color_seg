@@ -19,14 +19,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # Set the path to the folder containing your original images and masks
-input_folder = '/Users/ask4118/Documents/Python/data_augmentation/data/original_data_1d'
+input_folder = 'path_to/original_data'
 
 # Set the path to the directory where you want to save augmented images
-output_image_dir = "/Users/ask4118/Documents/Python/data_augmentation/data/augmented_data_1d/images/"
+output_image_dir = "path_to/images/"
 os.makedirs(output_image_dir, exist_ok=True)
 
 # Set the path to the directory where you want to save augmented masks
-output_mask_dir = "/Users/ask4118/Documents/Python/data_augmentation/data/augmented_data_1d/masks/"
+output_mask_dir = "path_to/masks/"
 os.makedirs(output_mask_dir, exist_ok=True)
 
 
