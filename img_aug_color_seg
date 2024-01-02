@@ -1,0 +1,64 @@
+import os
+import cv2
+from imgaug import augmenters as iaa
+from imgaug.augmentables.segmaps import SegmentationMapsOnImage
+import matplotlib.pyplot as plt
+
+# Set the paths
+input_folder = "path_in_shared"
+output_image_dir = "path_out_images"
+output_mask_dir = "path_out_masks"
+
+os.makedirs(output_image_dir, exist_ok=True)
+os.makedirs(output_mask_dir, exist_ok=True)
+
+# Augmenters for both image and mask
+common_augmenter = iaa.Sequential([
+    iaa.Fliplr(0.4),        # 40% chance of horizontal flip
+    iaa.Flipud(0.4),        # 40% chance of vertical flip
+    iaa.Affine(rotate=(-10, 10)),  # Rotate images by -10 to 10 degrees
+    iaa.Dropout(p=(0, 0.2))  # Randomly drop 0% to 20% of the pixels
+])
+
+# Augmenters for the image only
+image_only_augmenter = iaa.Sequential([
+    iaa.Multiply((0.8, 1.2)),  # Change brightness (80-120%)
+    iaa.AddToHueAndSaturation((-20, 20)),  # Change hue and saturation
+    iaa.LinearContrast((0.75, 1.5)),  # Improve or decrease contrast
+])
+
+# List all image files in the input folder
+image_files = [filename for filename in os.listdir(os.path.join(input_folder, 'images')) if filename.endswith(".jpeg")]
+
+# Process each image file
+for image_file in image_files:
+    # Load the original image and mask
+    image_path = os.path.join(input_folder, 'images', image_file)
+    mask_path = os.path.join(input_folder, 'masks', image_file.replace(".jpeg", "_combined_mask.png"))
+
+    image = cv2.imread(image_path)
+    mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
+
+    # Ensure the image and mask have the same dimensions
+    assert image.shape[:2] == mask.shape[:2], "Image and mask dimensions do not match"
+
+    # Create SegmentationMapOnImage object for the mask
+    segmap = SegmentationMapsOnImage(mask, shape=image.shape[:2])
+
+    # Apply common augmentations to both image and mask
+    augmented = common_augmenter(image=image, segmentation_maps=segmap)
+    augmented_image = augmented['image']
+    augmented_segmap = augmented['segmentation_maps'].arr
+
+    # Apply image-only augmentations
+    augmented_image = image_only_augmenter(image=augmented_image)
+
+    # Save augmented image and mask
+    output_image_path = os.path.join(output_image_dir, f"aug_{image_file}")
+    output_mask_filename = image_file.replace(".jpeg", "_mask_aug.png")
+    output_mask_path = os.path.join(output_mask_dir, output_mask_filename)
+
+    cv2.imwrite(output_image_path, augmented_image)
+    cv2.imwrite(output_mask_path, augmented_segmap)
+
+print("Data augmentation complete.")
