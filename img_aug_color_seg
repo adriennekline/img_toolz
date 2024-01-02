@@ -83,12 +83,10 @@ for image_file in image_files:
         image_path = os.path.join(input_folder, 'images', image_file)
         mask_path = os.path.join(input_folder, 'masks', image_file.replace(".jpeg", "_combined_mask.png"))
     
-    
         image, mask = load_image_and_mask(image_path, mask_path)
         
         # Ensure the image and mask have the same dimensions
         assert image.shape[:2] == mask.shape[:2], "Image and mask dimensions do not match"
-    
     
         # Augment the image and mask
         image_aug, mask_aug = augment_image_and_mask(image, mask, common_augmenter)
