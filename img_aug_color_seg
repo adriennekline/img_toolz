@@ -45,8 +45,10 @@ def load_image_and_mask(image_path, mask_path):
 def augment_image_and_mask(image, mask, augmenters):
     # Augment both image and mask using the same sequence of augmentations
     seq = iaa.Sequential(augmenters)
-    image_aug, mask_aug = seq(image=image, segmentation_maps=ia.SegmentationMapsOnImage(mask, shape=image.shape))
-    return image_aug, mask_aug.get_arr()
+    seq_det = seq.to_deterministic()
+    image_aug = seq_det(image = image)
+    mask_aug = seq_det(image = mask)
+    return image_aug, mask_aug
 
 def augment_image_only(image, augmenters):
     # Augment both image and mask using the same sequence of augmentations
@@ -60,7 +62,7 @@ common_augmenter = iaa.Sequential([
     iaa.Fliplr(0.4),        # 40% chance of horizontal flip
     iaa.Flipud(0.4),        # 40% chance of vertical flip
     iaa.Affine(rotate=(-10, 10)),  # Rotate images by -10 to 10 degrees
-    iaa.CoarseDropout(p=(0, 0.10))  # Randomly drop 0% to 10% of the pixels
+    iaa.CoarseDropout(p=(0, 0.15))  # Randomly drop 0% to 10% of the pixels
 ])
 
 # Augmenters for the image only
@@ -69,9 +71,6 @@ image_only_augmenter = iaa.Sequential([
     iaa.AddToHueAndSaturation((-20, 20)),  # Change hue and saturation
     iaa.LinearContrast((0.75, 1.5)),  # Improve or decrease contrast
 ])
-
-# Load your image and mask
-
 
 # List all image files in the input folder
 image_files = [filename for filename in os.listdir(os.path.join(input_folder, 'images')) if filename.endswith(".jpeg")]
@@ -85,6 +84,10 @@ for image_file in image_files:
     
         image, mask = load_image_and_mask(image_path, mask_path)
         
+        #full_path = '/path/to/your/file.txt'
+        path, filename = os.path.split(image_path)
+        basename, extension = os.path.splitext(filename)
+
         # Ensure the image and mask have the same dimensions
         assert image.shape[:2] == mask.shape[:2], "Image and mask dimensions do not match"
     
@@ -94,14 +97,13 @@ for image_file in image_files:
         # Augment the image and mask
         image_aug = augment_image_only(image_aug, image_only_augmenter)
         
-    
         # Create the path for the augmented image
-        output_image_path = os.path.join(output_image_dir, f"aug_{str(i)}_{image_file}")
-        #print(output_image_path)
+        output_image_path = os.path.join(output_image_dir, f"{basename}_aug_{str(i)}.jpeg")
+        #print(output_image_path)-
     
         # Create the path for the augmented mask
         #output_mask_filename = image_file.replace(".png", "_mask_aug.png")
-        output_mask_path = os.path.join(output_mask_dir, f"mask_aug_{str(i)}_{image_file}")
+        output_mask_path = os.path.join(output_mask_dir, f"{basename}_mask_aug_{str(i)}.png")
         #print(output_mask_path)
     
         # Save augmented image and mask
@@ -113,4 +115,5 @@ for image_file in image_files:
         cv2.imwrite(output_mask_path, mask_aug)
 
 print("Data augmentation complete.")
+
 
